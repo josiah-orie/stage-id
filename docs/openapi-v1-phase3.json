@@ -1,0 +1,494 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TalentHub API – Phase 3",
+    "description": "Discovery, scouting, watchlists, evaluations, notifications, and safeguarding endpoints.",
+    "version": "1.0.0-phase3"
+  },
+  "servers": [
+    { "url": "https://api.talenthub.io", "description": "Production" },
+    { "url": "http://localhost:8080", "description": "Local development" }
+  ],
+  "paths": {
+    "/api/v1/scouts/profile": {
+      "post": {
+        "summary": "Create scout profile",
+        "tags": ["Scout"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateScoutProfileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Scout profile created" },
+          "409": { "description": "Scout profile already exists" }
+        }
+      }
+    },
+    "/api/v1/scouts/me": {
+      "get": {
+        "summary": "Get own scout profile",
+        "tags": ["Scout"],
+        "responses": {
+          "200": { "description": "Scout profile" },
+          "404": { "description": "Profile not found" }
+        }
+      }
+    },
+    "/api/v1/scouts/me/specializations": {
+      "post": {
+        "summary": "Add scout specialization (sport/position)",
+        "tags": ["Scout"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AddSpecializationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Specialization added" }
+        }
+      },
+      "get": {
+        "summary": "List scout specializations",
+        "tags": ["Scout"],
+        "responses": {
+          "200": { "description": "List of specializations" }
+        }
+      }
+    },
+    "/api/v1/discovery/athletes": {
+      "get": {
+        "summary": "Search and discover athletes",
+        "tags": ["Discovery"],
+        "parameters": [
+          { "name": "sport", "in": "query", "schema": { "type": "string" } },
+          { "name": "country", "in": "query", "schema": { "type": "string" } },
+          { "name": "position", "in": "query", "schema": { "type": "string" } },
+          { "name": "ageCategory", "in": "query", "schema": { "type": "string" } },
+          { "name": "verificationStatus", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated athlete discovery results" },
+          "403": { "description": "Scout not verified or subscription insufficient" }
+        }
+      }
+    },
+    "/api/v1/discovery/athletes/{id}": {
+      "get": {
+        "summary": "Get athlete discovery card",
+        "tags": ["Discovery"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Athlete discovery card" },
+          "403": { "description": "Consent withdrawn — profile restricted" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/v1/discovery/saved-searches": {
+      "post": {
+        "summary": "Save a discovery search filter set",
+        "tags": ["Discovery"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SavedSearchRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Saved search created" }
+        }
+      },
+      "get": {
+        "summary": "List saved searches",
+        "tags": ["Discovery"],
+        "responses": {
+          "200": { "description": "List of saved searches" }
+        }
+      }
+    },
+    "/api/v1/scouting/favourites": {
+      "post": {
+        "summary": "Add athlete to favourites",
+        "tags": ["Scouting"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FavouriteRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Added to favourites" },
+          "409": { "description": "Already in favourites" }
+        }
+      },
+      "get": {
+        "summary": "List favourited athletes",
+        "tags": ["Scouting"],
+        "responses": {
+          "200": { "description": "Paginated favourites list" }
+        }
+      }
+    },
+    "/api/v1/scouting/favourites/{id}": {
+      "delete": {
+        "summary": "Remove athlete from favourites",
+        "tags": ["Scouting"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Removed" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/v1/scouting/watchlists": {
+      "post": {
+        "summary": "Create a watchlist",
+        "tags": ["Scouting"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateWatchlistRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Watchlist created" }
+        }
+      },
+      "get": {
+        "summary": "List own watchlists",
+        "tags": ["Scouting"],
+        "responses": {
+          "200": { "description": "List of watchlists" }
+        }
+      }
+    },
+    "/api/v1/scouting/watchlists/{id}/athletes": {
+      "post": {
+        "summary": "Add athlete to watchlist",
+        "tags": ["Scouting"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WatchlistAthleteRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Athlete added to watchlist" },
+          "409": { "description": "Already on watchlist" }
+        }
+      }
+    },
+    "/api/v1/scouting/follows": {
+      "post": {
+        "summary": "Follow an athlete (enables DEVELOPMENT_UPDATE notifications)",
+        "tags": ["Scouting"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FollowRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Follow created" },
+          "409": { "description": "Already following" }
+        }
+      }
+    },
+    "/api/v1/scouting/evaluations": {
+      "post": {
+        "summary": "Create a scout evaluation",
+        "tags": ["Scouting"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateEvaluationRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Evaluation created" },
+          "403": { "description": "FEATURE_NOT_AVAILABLE — requires paid plan" }
+        }
+      },
+      "get": {
+        "summary": "List own evaluations",
+        "tags": ["Scouting"],
+        "responses": {
+          "200": { "description": "Paginated evaluations" }
+        }
+      }
+    },
+    "/api/v1/scouting/evaluations/{id}/scores": {
+      "post": {
+        "summary": "Add scores to an evaluation",
+        "tags": ["Scouting"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EvaluationScoreRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Scores added" }
+        }
+      }
+    },
+    "/api/v1/scouting/evaluations/{id}/complete": {
+      "post": {
+        "summary": "Mark evaluation as complete",
+        "tags": ["Scouting"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Evaluation completed" }
+        }
+      }
+    },
+    "/api/v1/scouting/notes": {
+      "post": {
+        "summary": "Create a scouting note",
+        "tags": ["Scouting"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScoutingNoteRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Note created" }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "summary": "List notifications for the authenticated user",
+        "tags": ["Notifications"],
+        "parameters": [
+          { "name": "unreadOnly", "in": "query", "schema": { "type": "boolean", "default": false } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated notifications" }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "patch": {
+        "summary": "Mark notification as read",
+        "tags": ["Notifications"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Notification marked read" }
+        }
+      }
+    },
+    "/api/v1/safeguarding/consent": {
+      "post": {
+        "summary": "Grant or withdraw platform consent",
+        "tags": ["Safeguarding"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ConsentRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Consent status updated" }
+        }
+      },
+      "get": {
+        "summary": "Get current consent status",
+        "tags": ["Safeguarding"],
+        "responses": {
+          "200": { "description": "Current consent record" }
+        }
+      }
+    },
+    "/api/v1/admin/scouts": {
+      "get": {
+        "summary": "List scouts pending verification",
+        "tags": ["Admin – Scout Verification"],
+        "responses": {
+          "200": { "description": "Paginated scout list" }
+        }
+      }
+    },
+    "/api/v1/admin/scouts/{id}/verify": {
+      "post": {
+        "summary": "Approve scout verification",
+        "tags": ["Admin – Scout Verification"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Scout verified" }
+        }
+      }
+    },
+    "/api/v1/admin/scouts/{id}/reject": {
+      "post": {
+        "summary": "Reject scout verification",
+        "tags": ["Admin – Scout Verification"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RejectionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Scout verification rejected" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateScoutProfileRequest": {
+        "type": "object",
+        "required": ["displayName", "country"],
+        "properties": {
+          "displayName": { "type": "string" },
+          "bio": { "type": "string" },
+          "organizationName": { "type": "string" },
+          "country": { "type": "string" }
+        }
+      },
+      "AddSpecializationRequest": {
+        "type": "object",
+        "properties": {
+          "sportCode": { "type": "string" },
+          "position": { "type": "string" },
+          "ageCategory": { "type": "string" }
+        }
+      },
+      "SavedSearchRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "filters": { "type": "object" }
+        }
+      },
+      "FavouriteRequest": {
+        "type": "object",
+        "required": ["athleteId"],
+        "properties": {
+          "athleteId": { "type": "string" }
+        }
+      },
+      "CreateWatchlistRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      },
+      "WatchlistAthleteRequest": {
+        "type": "object",
+        "required": ["athleteId"],
+        "properties": {
+          "athleteId": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      },
+      "FollowRequest": {
+        "type": "object",
+        "required": ["athleteId"],
+        "properties": {
+          "athleteId": { "type": "string" }
+        }
+      },
+      "CreateEvaluationRequest": {
+        "type": "object",
+        "required": ["athleteId"],
+        "properties": {
+          "athleteId": { "type": "string" },
+          "notes": { "type": "string" }
+        }
+      },
+      "EvaluationScoreRequest": {
+        "type": "object",
+        "properties": {
+          "criteria": { "type": "object", "description": "Map of criterion name to score (0-10)" }
+        }
+      },
+      "ScoutingNoteRequest": {
+        "type": "object",
+        "required": ["athleteId", "body"],
+        "properties": {
+          "athleteId": { "type": "string" },
+          "body": { "type": "string" },
+          "visibility": { "type": "string", "enum": ["PRIVATE", "ORGANIZATION"] }
+        }
+      },
+      "ConsentRequest": {
+        "type": "object",
+        "required": ["action"],
+        "properties": {
+          "action": { "type": "string", "enum": ["GRANT", "WITHDRAW"] }
+        }
+      },
+      "RejectionRequest": {
+        "type": "object",
+        "required": ["reason"],
+        "properties": {
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [{ "bearerAuth": [] }]
+}

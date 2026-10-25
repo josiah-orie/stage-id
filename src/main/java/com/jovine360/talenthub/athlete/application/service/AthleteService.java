@@ -9,6 +9,7 @@ import com.jovine360.talenthub.athlete.domain.service.AthleteNumberGeneratorServ
 import com.jovine360.talenthub.shared.domain.exception.DuplicateResourceException;
 import com.jovine360.talenthub.shared.domain.exception.EntityNotFoundException;
 import com.jovine360.talenthub.sport.api.SportConfigApi;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,13 +22,16 @@ public class AthleteService implements AthleteApi {
     private final AthleteProfileRepository athleteProfileRepository;
     private final AthleteNumberGeneratorService numberGenerator;
     private final SportConfigApi sportConfigApi;
+    private final MeterRegistry meterRegistry;
 
     public AthleteService(AthleteProfileRepository athleteProfileRepository,
                           AthleteNumberGeneratorService numberGenerator,
-                          SportConfigApi sportConfigApi) {
+                          SportConfigApi sportConfigApi,
+                          MeterRegistry meterRegistry) {
         this.athleteProfileRepository = athleteProfileRepository;
         this.numberGenerator = numberGenerator;
         this.sportConfigApi = sportConfigApi;
+        this.meterRegistry = meterRegistry;
     }
 
     public AthleteProfileDto createAthleteProfile(String userId, CreateAthleteProfileRequest req) {
@@ -54,7 +58,9 @@ public class AthleteService implements AthleteApi {
         String athleteNumber = numberGenerator.generateUnaffiliatedNumber();
         profile.setAthleteNumber(athleteNumber);
 
-        return toDto(athleteProfileRepository.save(profile));
+        AthleteProfileDto saved = toDto(athleteProfileRepository.save(profile));
+        meterRegistry.counter("athlete.registrations.total").increment();
+        return saved;
     }
 
     public AthleteProfileDto updateAthleteProfile(String userId, CreateAthleteProfileRequest req) {

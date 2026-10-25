@@ -1,0 +1,35 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TalentHub API – Phase 2",
+    "description": "Activity configuration, athlete activities, development, and media endpoints.",
+    "version": "1.0.0-phase2"
+  },
+  "servers": [{ "url": "https://api.talenthub.io", "description": "Production" }],
+  "paths": {
+    "/api/v1/activity-types/{id}/schema": {
+      "get": { "summary": "Get published schema for activity type", "parameters": [{"name":"id","in":"path","required":true,"schema":{"type":"string"}}], "responses": {"200": {"description": "Published schema"}}}
+    },
+    "/api/v1/athletes/{id}/activities": {
+      "post": { "summary": "Create activity draft", "responses": {"201": {"description": "Created"}}},
+      "get":  { "summary": "List athlete activities", "responses": {"200": {"description": "Paginated list"}}}
+    },
+    "/api/v1/activities/{id}": {
+      "get":   { "summary": "Get activity", "responses": {"200": {"description": "Activity"}}},
+      "patch": { "summary": "Update activity draft", "responses": {"200": {"description": "Updated"}}}
+    },
+    "/api/v1/activities/{id}/submit":  { "post": { "summary": "Submit activity", "responses": {"200": {"description": "Submitted"}}}},
+    "/api/v1/activities/{id}/publish": { "post": { "summary": "Publish activity", "responses": {"200": {"description": "Published"}}}},
+    "/api/v1/activities/{id}/media":   { "post": { "summary": "Initiate media upload for activity", "responses": {"201": {"description": "Upload initiated"}}}},
+    "/api/v1/athletes/{id}/development": { "get": { "summary": "Get development timeline", "responses": {"200": {"description": "Timeline"}}}},
+    "/api/v1/athletes/{id}/performance": { "get": { "summary": "Get performance chart data", "responses": {"200": {"description": "Measurements"}}}},
+    "/api/v1/athletes/{id}/measurements": { "post": { "summary": "Record measurement", "responses": {"201": {"description": "Recorded"}}}},
+    "/api/v1/media/uploads": { "post": { "summary": "Initiate media upload", "responses": {"201": {"description": "Session created"}}}},
+    "/api/v1/media/uploads/{id}/complete": { "post": { "summary": "Complete upload", "responses": {"200": {"description": "Completed"}}}},
+    "/api/v1/media/{id}": {
+      "get":    { "summary": "Get media asset", "responses": {"200": {"description": "Asset"}}},
+      "delete": { "summary": "Delete media asset", "responses": {"204": {"description": "Deleted"}}}
+    },
+    "/api/v1/media/{id}/playback": { "get": { "summary": "Get playback URL", "responses": {"200": {"description": "Presigned URL"}}}}
+  }
+}

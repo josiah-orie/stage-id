@@ -3,11 +3,13 @@ package com.jovine360.talenthub.identity.api;
 import com.jovine360.talenthub.identity.application.command.LoginCommand;
 import com.jovine360.talenthub.identity.application.command.RefreshTokenCommand;
 import com.jovine360.talenthub.identity.application.command.RegisterUserCommand;
+import com.jovine360.talenthub.identity.application.service.AdminMfaService;
 import com.jovine360.talenthub.identity.application.service.AuthService;
 import com.jovine360.talenthub.shared.infrastructure.configuration.AuthenticatedPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,9 +33,11 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final AdminMfaService adminMfaService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, AdminMfaService adminMfaService) {
         this.authService = authService;
+        this.adminMfaService = adminMfaService;
     }
 
     @Operation(summary = "Register a new user account")
@@ -94,4 +98,33 @@ public class AuthController {
         authService.resetPassword(request.token(), request.newPassword());
         return ResponseEntity.ok(Map.of("message", "Password reset successful."));
     }
+
+    /**
+     * Verify a TOTP code for an admin account.
+     * Requires a valid JWT (the user has already authenticated with password).
+     * If MFA is enabled on the account, this step must be completed within the
+     * login session before elevated endpoints become accessible.
+     */
+    @Operation(summary = "Verify TOTP MFA code for admin accounts")
+    @PostMapping("/mfa/verify")
+    public ResponseEntity<Map<String, Object>> verifyMfa(
+            @Valid @RequestBody MfaVerifyRequest request,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal) {
+        boolean valid = adminMfaService.verifyCode(request.secret(), request.code());
+        if (!valid) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "INVALID_MFA_CODE",
+                            "message", "The TOTP code is invalid or has expired."));
+        }
+        return ResponseEntity.ok(Map.of("verified", true,
+                "message", "MFA verification successful."));
+    }
+
+    // -------------------------------------------------------------------------
+    // Inner request/response records
+    // -------------------------------------------------------------------------
+
+    public record MfaVerifyRequest(
+            @NotBlank String secret,
+            @NotBlank String code) {}
 }

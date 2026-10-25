@@ -138,6 +138,19 @@
 			<version>8.5.17</version>
 		</dependency>
 
+		<!-- Admin MFA (TOTP) -->
+		<dependency>
+			<groupId>com.eatthepath</groupId>
+			<artifactId>java-otp</artifactId>
+			<version>0.4.0</version>
+		</dependency>
+
+		<!-- Micrometer Prometheus registry -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
 		<!-- Thymeleaf (email templates) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

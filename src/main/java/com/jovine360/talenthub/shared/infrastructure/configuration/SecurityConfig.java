@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 
 /**
  * Stateless JWT-based security configuration.
@@ -33,6 +34,16 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .headers(headers -> headers
+                .addHeaderWriter(new StaticHeadersWriter(
+                        "Strict-Transport-Security", "max-age=31536000; includeSubDomains"))
+                .addHeaderWriter(new StaticHeadersWriter(
+                        "X-Content-Type-Options", "nosniff"))
+                .addHeaderWriter(new StaticHeadersWriter(
+                        "X-Frame-Options", "DENY"))
+                .addHeaderWriter(new StaticHeadersWriter(
+                        "Content-Security-Policy", "default-src 'self'"))
+            )
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 .accessDeniedHandler((req, res, denied) -> res.setStatus(HttpStatus.FORBIDDEN.value()))
