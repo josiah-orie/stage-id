@@ -1,0 +1,19 @@
+{
+  "_comment": "OpenAPI v1 Phase 1 snapshot placeholder. Generate the real snapshot by running the application and calling GET /v3/api-docs.",
+  "openapi": "3.0.1",
+  "info": {
+    "title": "TalentHub API — Phase 1",
+    "description": "Phase 1 covers: Authentication, User Profiles, Sports, Subscriptions, Athletes, Guardians, Organizations, and Athlete Access.",
+    "version": "v1-phase1"
+  },
+  "modules": [
+    "identity",
+    "profile",
+    "sport",
+    "subscription",
+    "athlete",
+    "guardian",
+    "organization",
+    "athleteaccess"
+  ]
+}
