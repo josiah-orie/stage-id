@@ -1,0 +1,33 @@
+{
+  "complete": false,
+  "tasks": [
+    { "id": 1,  "name": "Project Scaffold Repair",                  "done": false },
+    { "id": 2,  "name": "Shared Kernel",                            "done": false },
+    { "id": 3,  "name": "Identity Module",                          "done": false },
+    { "id": 4,  "name": "Profile Module",                           "done": false },
+    { "id": 5,  "name": "Sport Configuration Module",               "done": false },
+    { "id": 6,  "name": "Subscription Stub",                        "done": false },
+    { "id": 7,  "name": "Athlete Module",                           "done": false },
+    { "id": 8,  "name": "Guardian Module",                          "done": false },
+    { "id": 9,  "name": "Organization Module",                      "done": false },
+    { "id": 10, "name": "Athlete Access Module",                    "done": false },
+    { "id": 11, "name": "Phase 1 Integration",                      "done": false },
+    { "id": 12, "name": "Activity Configuration Module",            "done": false },
+    { "id": 13, "name": "Athlete Activity Module",                  "done": false },
+    { "id": 14, "name": "Development Module",                       "done": false },
+    { "id": 15, "name": "Media Module",                             "done": false },
+    { "id": 16, "name": "Phase 2 Integration",                      "done": false },
+    { "id": 17, "name": "Scout Profile Module",                     "done": false },
+    { "id": 18, "name": "Athlete Discovery Module",                 "done": false },
+    { "id": 19, "name": "Scout Favourites + Watchlists",            "done": false },
+    { "id": 20, "name": "Scout Evaluation Module",                  "done": false },
+    { "id": 21, "name": "Notification Module",                      "done": false },
+    { "id": 22, "name": "Organization Scouting Workspace",          "done": false },
+    { "id": 23, "name": "Phase 3 Integration",                      "done": false },
+    { "id": 24, "name": "Full Subscription Module",                 "done": false },
+    { "id": 25, "name": "Payment Module",                           "done": false },
+    { "id": 26, "name": "Administration Module",                    "done": false },
+    { "id": 27, "name": "Production Readiness",                     "done": false },
+    { "id": 28, "name": "User Guide Documentation",                 "done": false }
+  ]
+}
