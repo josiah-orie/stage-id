@@ -1,8 +1,8 @@
 {
   "complete": false,
   "tasks": [
-    { "id": 1,  "name": "Project Scaffold Repair",                  "done": false },
-    { "id": 2,  "name": "Shared Kernel",                            "done": false },
+    { "id": 1,  "name": "Project Scaffold Repair",                  "done": true },
+    { "id": 2,  "name": "Shared Kernel",                            "done": true },
     { "id": 3,  "name": "Identity Module",                          "done": false },
     { "id": 4,  "name": "Profile Module",                           "done": false },
     { "id": 5,  "name": "Sport Configuration Module",               "done": false },
