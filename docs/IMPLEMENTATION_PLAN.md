@@ -3,7 +3,7 @@
   "tasks": [
     { "id": 1,  "name": "Project Scaffold Repair",                  "done": true },
     { "id": 2,  "name": "Shared Kernel",                            "done": true },
-    { "id": 3,  "name": "Identity Module",                          "done": false },
+    { "id": 3,  "name": "Identity Module",                          "done": true },
     { "id": 4,  "name": "Profile Module",                           "done": false },
     { "id": 5,  "name": "Sport Configuration Module",               "done": false },
     { "id": 6,  "name": "Subscription Stub",                        "done": false },
