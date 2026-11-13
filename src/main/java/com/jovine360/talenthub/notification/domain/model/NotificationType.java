@@ -1,0 +1,13 @@
+package com.jovine360.talenthub.notification.domain.model;
+
+public enum NotificationType {
+    EMAIL_VERIFICATION,
+    PASSWORD_RESET,
+    RELATIONSHIP_REQUEST,
+    RELATIONSHIP_APPROVED,
+    RELATIONSHIP_REVOKED,
+    ORG_INVITATION,
+    BILLING_EVENT,
+    DEVELOPMENT_UPDATE,
+    VERIFICATION_STATUS_CHANGE
+}

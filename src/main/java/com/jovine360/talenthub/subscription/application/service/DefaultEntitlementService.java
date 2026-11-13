@@ -1,7 +1,7 @@
 package com.jovine360.talenthub.subscription.application.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 import com.jovine360.talenthub.shared.domain.exception.EntitlementLimitExceededException;
 import com.jovine360.talenthub.shared.domain.service.EntitlementService;
 import com.jovine360.talenthub.subscription.domain.model.SubscriptionStatus;
@@ -34,10 +34,10 @@ public class DefaultEntitlementService implements EntitlementService {
     );
 
     private final UserSubscriptionRepository subscriptionRepository;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
 
     public DefaultEntitlementService(UserSubscriptionRepository subscriptionRepository,
-                                     ObjectMapper objectMapper) {
+                                     JsonMapper objectMapper) {
         this.subscriptionRepository = subscriptionRepository;
         this.objectMapper = objectMapper;
     }

@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Email Verification</title></head>
+<body>
+<h2>Welcome to TalentHub!</h2>
+<p>Please verify your email address by clicking the link below:</p>
+<p><a th:href="${verificationUrl}">Verify Email</a></p>
+<p>This link expires in 24 hours.</p>
+</body>
+</html>

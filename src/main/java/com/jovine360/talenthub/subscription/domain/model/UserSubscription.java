@@ -40,6 +40,21 @@ public class UserSubscription extends AuditableEntity {
     @Column(name = "expires_at")
     private Instant expiresAt;
 
+    @Column(name = "grace_ends_at")
+    private Instant graceEndsAt;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @Column(name = "cancelled_by", columnDefinition = "CHAR(36)")
+    private String cancelledBy;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "renews_at")
+    private Instant renewsAt;
+
     public boolean isActive() {
         return status == SubscriptionStatus.ACTIVE
                 && (expiresAt == null || Instant.now().isBefore(expiresAt));

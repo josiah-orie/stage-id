@@ -5,7 +5,10 @@ package com.jovine360.talenthub.identity.domain.model;
  */
 public enum UserRole {
     ATHLETE,
+    COACH,
+    PARENT,
     GUARDIAN,
+    AGENT,
     SCOUT,
     ORG_ADMIN,
     ADMIN,
