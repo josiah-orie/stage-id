@@ -36,6 +36,11 @@ public class SportService implements SportConfigApi {
         return sportRepository.existsByCode(code);
     }
 
+    @Override
+    public Optional<SportDto> getSportById(String id) {
+        return sportRepository.findById(id).map(this::toDto);
+    }
+
     public SportDto getById(String id) {
         return sportRepository.findById(id)
                 .map(this::toDto)

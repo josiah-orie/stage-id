@@ -44,4 +44,16 @@ public class Organization extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 30, nullable = false)
     private OrgStatus status = OrgStatus.ACTIVE;
+
+    @Column(name = "description", length = 1000)
+    private String description;
+
+    @Column(name = "verified_by", columnDefinition = "CHAR(36)")
+    private String verifiedBy;
+
+    @Column(name = "verified_at")
+    private java.time.Instant verifiedAt;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
 }

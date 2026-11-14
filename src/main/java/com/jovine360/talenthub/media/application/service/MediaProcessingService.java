@@ -49,9 +49,8 @@ public class MediaProcessingService {
         this.meterRegistry = meterRegistry;
     }
 
+    // @ApplicationModuleListener already implies @Async, @Transactional(REQUIRES_NEW) and @TransactionalEventListener
     @ApplicationModuleListener
-    @Async
-    @Transactional
     public void onUploadCompleted(MediaUploadCompletedEvent event) {
         meterRegistry.counter("media.processing.jobs.total").increment();
         MediaAsset asset = assetRepository.findById(event.mediaAssetId()).orElse(null);

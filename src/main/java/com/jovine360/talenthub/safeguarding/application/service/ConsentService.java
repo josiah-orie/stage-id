@@ -34,7 +34,19 @@ public class ConsentService {
         record.setConsentedBy(consentedBy);
         record.setConsentedAt(Instant.now());
         record.setAuthorizationSource(authSource);
-        return consentRepository.save(record);
+        ConsentRecord saved = consentRepository.save(record);
+        eventPublisher.publishEvent(new com.jovine360.talenthub.safeguarding.api.AthleteConsentGrantedEvent(
+                athleteId, purpose.name(), consentedBy));
+        return saved;
+    }
+
+    /** Every consent record for the athlete, newest first, including revoked ones. */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public java.util.List<ConsentRecord> listConsents(String athleteId) {
+        return consentRepository.findByAthleteId(athleteId).stream()
+                .sorted(java.util.Comparator.comparing(ConsentRecord::getConsentedAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .toList();
     }
 
     public void revokeConsent(String athleteId, ConsentPurpose purpose, String revokedBy) {

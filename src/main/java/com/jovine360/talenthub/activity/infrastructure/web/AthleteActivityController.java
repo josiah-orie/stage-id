@@ -3,7 +3,11 @@ package com.jovine360.talenthub.activity.infrastructure.web;
 import com.jovine360.talenthub.activity.application.service.ActivityQueryService;
 import com.jovine360.talenthub.activity.application.service.ActivitySubmissionService;
 import com.jovine360.talenthub.activity.application.service.ActivitySubmissionService.CreateActivityRequest;
+import com.jovine360.talenthub.activity.domain.model.ActivityStatus;
 import com.jovine360.talenthub.activity.domain.model.AthleteActivity;
+import com.jovine360.talenthub.activity.domain.model.VisibilityLevel;
+import com.jovine360.talenthub.athleteaccess.api.AthleteAccessPolicy;
+import com.jovine360.talenthub.athleteaccess.domain.model.AthletePermission;
 import com.jovine360.talenthub.shared.api.PageResponse;
 import com.jovine360.talenthub.shared.infrastructure.configuration.AuthenticatedPrincipal;
 import jakarta.validation.Valid;
@@ -19,11 +23,33 @@ public class AthleteActivityController {
 
     private final ActivitySubmissionService submissionService;
     private final ActivityQueryService queryService;
+    private final AthleteAccessPolicy accessPolicy;
 
     public AthleteActivityController(ActivitySubmissionService submissionService,
-                                      ActivityQueryService queryService) {
+                                      ActivityQueryService queryService,
+                                      AthleteAccessPolicy accessPolicy) {
         this.submissionService = submissionService;
         this.queryService = queryService;
+        this.accessPolicy = accessPolicy;
+    }
+
+    /**
+     * Related callers (athlete, guardian, grant holder, admin) see everything. A SCOUT sees only
+     * published, public activities. Anyone else gets 403.
+     */
+    private boolean canSeeAll(String athleteId, AuthenticatedPrincipal principal) {
+        if (accessPolicy.canAccess(athleteId, principal.userId(), principal.roles(), AthletePermission.VIEW_STATS)) {
+            return true;
+        }
+        if (principal.roles().contains("SCOUT")) {
+            return false;
+        }
+        accessPolicy.assertCanAccess(athleteId, principal.userId(), principal.roles(), AthletePermission.VIEW_STATS);
+        return true;
+    }
+
+    private static boolean isPublicPublished(AthleteActivity a) {
+        return a.getActivityStatus() == ActivityStatus.PUBLISHED && a.getVisibilityLevel() == VisibilityLevel.PUBLIC;
     }
 
     @PostMapping("/athletes/{id}/activities")
@@ -37,13 +63,21 @@ public class AthleteActivityController {
 
     @GetMapping("/athletes/{id}/activities")
     public ResponseEntity<PageResponse<AthleteActivity>> listActivities(
-            @PathVariable String id, Pageable pageable) {
-        return ResponseEntity.ok(queryService.getAthleteActivities(id, pageable));
+            @PathVariable String id, Pageable pageable,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal) {
+        boolean all = canSeeAll(id, principal);
+        return ResponseEntity.ok(queryService.getAthleteActivities(id, pageable, !all));
     }
 
     @GetMapping("/activities/{id}")
-    public ResponseEntity<AthleteActivity> getActivity(@PathVariable String id) {
-        return ResponseEntity.ok(queryService.getById(id));
+    public ResponseEntity<AthleteActivity> getActivity(
+            @PathVariable String id, @AuthenticationPrincipal AuthenticatedPrincipal principal) {
+        AthleteActivity activity = queryService.getById(id);
+        boolean all = canSeeAll(activity.getAthleteId(), principal);
+        if (!all && !isPublicPublished(activity)) {
+            throw new com.jovine360.talenthub.shared.domain.exception.EntityNotFoundException("AthleteActivity", id);
+        }
+        return ResponseEntity.ok(activity);
     }
 
     @PatchMapping("/activities/{id}")
@@ -66,11 +100,5 @@ public class AthleteActivityController {
             @PathVariable String id,
             @AuthenticationPrincipal AuthenticatedPrincipal principal) {
         return ResponseEntity.ok(submissionService.publishActivity(id, principal.userId()));
-    }
-
-    @GetMapping("/activities/{id}/measurements")
-    public ResponseEntity<Void> getMeasurements(@PathVariable String id) {
-        // Stub - full implementation in development module
-        return ResponseEntity.ok().build();
     }
 }

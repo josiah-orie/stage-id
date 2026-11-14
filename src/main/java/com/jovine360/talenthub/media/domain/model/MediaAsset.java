@@ -57,4 +57,17 @@ public class MediaAsset extends AuditableEntity {
 
     @Column(name = "uploaded_by", columnDefinition = "CHAR(36)")
     private String uploadedBy;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "moderation_status", length = 20, nullable = false)
+    private ModerationStatus moderationStatus = ModerationStatus.CLEAN;
+
+    @Column(name = "moderation_note", length = 500)
+    private String moderationNote;
+
+    @Column(name = "moderated_by", columnDefinition = "CHAR(36)")
+    private String moderatedBy;
+
+    @Column(name = "moderated_at")
+    private Instant moderatedAt;
 }

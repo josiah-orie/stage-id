@@ -10,4 +10,7 @@ public interface OrganizationRepository extends JpaRepository<Organization, Stri
     Optional<Organization> findByCode(String code);
     boolean existsByCode(String code);
     List<Organization> findByAdminUserId(String adminUserId);
+    org.springframework.data.domain.Page<Organization> findByStatus(
+            com.jovine360.talenthub.organization.domain.model.OrgStatus status,
+            org.springframework.data.domain.Pageable pageable);
 }

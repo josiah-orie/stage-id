@@ -46,11 +46,18 @@ public class ProfileController {
         return ResponseEntity.ok(profileService.updateProfile(principal.userId(), request));
     }
 
-    @Operation(summary = "Get a user's profile by user ID (admin/scout)")
+    @Operation(summary = "Get a user's profile. Other users get the public fields only")
     @GetMapping("/{userId}")
-    public ResponseEntity<UserProfileDto> getProfile(@PathVariable String userId) {
+    public ResponseEntity<UserProfileDto> getProfile(@PathVariable String userId,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal) {
         UserProfileDto dto = profileService.getProfileByUserId(userId);
         if (dto == null) throw new EntityNotFoundException("UserProfile", userId);
-        return ResponseEntity.ok(dto);
+        boolean full = userId.equals(principal.userId())
+                || principal.roles().contains("ADMIN") || principal.roles().contains("SUPER_ADMIN");
+        if (full) return ResponseEntity.ok(dto);
+        // Personal details (legal name, date of birth, gender, phone) are never shown to other users
+        return ResponseEntity.ok(new UserProfileDto(dto.id(), dto.userId(), null, null, dto.displayName(),
+                null, null, null, dto.countryCode(), dto.city(), dto.bio(), dto.avatarUrl(), dto.role(),
+                dto.profileComplete()));
     }
 }

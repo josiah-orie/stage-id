@@ -31,7 +31,7 @@ public class ActivityMediaController {
             @AuthenticationPrincipal AuthenticatedPrincipal principal) {
         MediaAssetService.InitiateUploadResponse response = mediaAssetService.initiateUpload(
                 req.ownerId(), OwnerType.ATHLETE, AssetType.ACTIVITY_VIDEO,
-                req.originalFilename(), req.mimeType(), principal.userId());
+                req.originalFilename(), req.mimeType(), principal.userId(), principal.roles());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

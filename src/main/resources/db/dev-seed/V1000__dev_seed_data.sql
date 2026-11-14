@@ -217,15 +217,15 @@ FROM (
 ) x JOIN subscription_plans p ON p.code = x.plan_code;
 
 INSERT INTO user_subscriptions (id, created_at, subscriber_id, plan_id, status, starts_at, expires_at, renews_at)
-SELECT @sub_club, NOW(6), @u_org_club, id, 'ACTIVE', DATE_SUB(NOW(6), INTERVAL 10 DAY),
+SELECT @sub_club, NOW(6), @o_club, id, 'ACTIVE', DATE_SUB(NOW(6), INTERVAL 10 DAY),
        DATE_ADD(NOW(6), INTERVAL 20 DAY), DATE_ADD(NOW(6), INTERVAL 20 DAY)
 FROM subscription_plans WHERE code = 'CLUB';
 INSERT INTO user_subscriptions (id, created_at, subscriber_id, plan_id, status, starts_at, expires_at, renews_at)
-SELECT 'c1000000-0000-4000-8000-000000000003', NOW(6), @u_org_acad, id, 'ACTIVE', DATE_SUB(NOW(6), INTERVAL 10 DAY),
+SELECT 'c1000000-0000-4000-8000-000000000003', NOW(6), @o_acad, id, 'ACTIVE', DATE_SUB(NOW(6), INTERVAL 10 DAY),
        DATE_ADD(NOW(6), INTERVAL 20 DAY), DATE_ADD(NOW(6), INTERVAL 20 DAY)
 FROM subscription_plans WHERE code = 'ACADEMY';
 INSERT INTO user_subscriptions (id, created_at, subscriber_id, plan_id, status, starts_at, expires_at, renews_at)
-SELECT @sub_agcy, NOW(6), @u_org_agcy, id, 'ACTIVE', DATE_SUB(NOW(6), INTERVAL 10 DAY),
+SELECT @sub_agcy, NOW(6), @o_agcy, id, 'ACTIVE', DATE_SUB(NOW(6), INTERVAL 10 DAY),
        DATE_ADD(NOW(6), INTERVAL 20 DAY), DATE_ADD(NOW(6), INTERVAL 20 DAY)
 FROM subscription_plans WHERE code = 'SCOUTING_AGENCY';
 

@@ -18,9 +18,24 @@ import java.util.List;
 public class SportController {
 
     private final SportService sportService;
+    private final com.jovine360.talenthub.sport.application.service.SportAdministrationService sportAdministration;
 
-    public SportController(SportService sportService) {
+    public SportController(SportService sportService,
+                           com.jovine360.talenthub.sport.application.service.SportAdministrationService sportAdministration) {
         this.sportService = sportService;
+        this.sportAdministration = sportAdministration;
+    }
+
+    @Operation(summary = "List a sport's disciplines")
+    @GetMapping("/{id}/disciplines")
+    public ResponseEntity<List<SportAdminDtos.DisciplineDto>> disciplines(@PathVariable String id) {
+        return ResponseEntity.ok(sportAdministration.listDisciplines(id));
+    }
+
+    @Operation(summary = "List a sport's performance metric definitions")
+    @GetMapping("/{id}/metrics")
+    public ResponseEntity<List<SportAdminDtos.MetricDto>> metrics(@PathVariable String id) {
+        return ResponseEntity.ok(sportAdministration.listMetrics(id));
     }
 
     @Operation(summary = "List all active sports")

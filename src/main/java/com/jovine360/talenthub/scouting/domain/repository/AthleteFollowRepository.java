@@ -8,4 +8,6 @@ import java.util.List;
 public interface AthleteFollowRepository extends JpaRepository<AthleteFollow, String> {
     List<AthleteFollow> findByAthleteIdAndNotificationsEnabledTrue(String athleteId);
     List<AthleteFollow> findByFollowerId(String followerId);
+    java.util.Optional<AthleteFollow> findFirstByFollowerIdAndAthleteId(String followerId, String athleteId);
+    List<AthleteFollow> findByFollowerIdAndAthleteId(String followerId, String athleteId);
 }

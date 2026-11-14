@@ -15,7 +15,8 @@ curl -X POST '{{BASE_URL}}/auth/register' \
   -H 'Content-Type: application/json' \
   -d '{
     "email": "tunde.adeyemi@fclagos.ng",
-    "password": "C0achPass#2024!"
+    "password": "C0achPass#2024!",
+    "role": "COACH"
   }'
 ```
 
@@ -27,18 +28,32 @@ curl -X POST '{{BASE_URL}}/auth/register' \
 }
 ```
 
-### Step 2 — Verify email, then assign COACH role
+### Step 2 — Verify your email and confirm your role
+
+Open the verification link from your email (`GET {{BASE_URL}}/auth/verify-email?token=<TOKEN>`). The `role` you sent at registration is your primary role, so no separate assignment is needed. Check your account:
 
 ```bash
-curl -X POST '{{BASE_URL}}/users/me/roles' \
-  -H 'Authorization: Bearer {{ACCESS_TOKEN}}' \
-  -H 'Content-Type: application/json' \
-  -d '{ "role": "COACH" }'
+curl -X GET '{{BASE_URL}}/users/me' \
+  -H 'Authorization: Bearer {{ACCESS_TOKEN}}'
 ```
+
+**Response (200 OK):**
+```json
+{
+  "userId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "email": "user@example.com",
+  "role": "COACH",
+  "roles": ["COACH"],
+  "status": "ACTIVE",
+  "emailVerified": true
+}
+```
+
+To hold an additional role, call `POST {{BASE_URL}}/users/me/roles` with `{ "role": "COACH" }`. Allowed roles are `ATHLETE`, `COACH`, `PARENT`, `GUARDIAN`, `AGENT` and `SCOUT`. `ADMIN`, `SUPER_ADMIN` and `ORG_ADMIN` are rejected with `400`, and adding a role you already hold returns `409`. New roles appear in tokens issued after your next login or refresh.
 
 ### Step 3 — Accept organization invitation
 
-When an organization owner or admin sends you an invitation, you receive an email with an invitation token. Accept it via:
+An organization `OWNER` or `ADMIN` invites you by email and gives you the `invitationToken` from their invitation response. Sign in with the invited email address and accept:
 
 ```bash
 curl -X POST '{{BASE_URL}}/organizations/org-001/invitations/accept' \
@@ -50,12 +65,16 @@ curl -X POST '{{BASE_URL}}/organizations/org-001/invitations/accept' \
 **Response (200 OK):**
 ```json
 {
+  "id": "mem-0002",
   "organizationId": "org-001",
-  "organizationName": "FC Lagos Academy",
+  "userId": "c1a2b3c4-d5e6-7890-abcd-ef0987654321",
   "memberRole": "COACH",
+  "status": "ACTIVE",
   "joinedAt": "2024-06-15T10:00:00Z"
 }
 ```
+
+The invitation must be sent to your account's email (`403` otherwise), and it expires after 7 days (`409`). Your coach access to an athlete comes from the organization's approved affiliation with that athlete (see ORGANIZATION_USER_GUIDE.md).
 
 ---
 
@@ -75,10 +94,12 @@ curl -X POST '{{BASE_URL}}/auth/login' \
 **Response (200 OK):**
 ```json
 {
-  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-  "refreshToken": "c4d5e6f7-a8b9-0123-cdef-01234567890c",
-  "tokenType": "Bearer",
-  "expiresIn": 3600
+  "access_token": "eyJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "c4d5e6f7-a8b9-0123-cdef-01234567890c",
+  "user_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "email": "user@example.com",
+  "role": "COACH",
+  "expires_in": 3600
 }
 ```
 
@@ -87,7 +108,7 @@ curl -X POST '{{BASE_URL}}/auth/login' \
 ```bash
 curl -X POST '{{BASE_URL}}/auth/refresh' \
   -H 'Content-Type: application/json' \
-  -d '{ "refreshToken": "c4d5e6f7-a8b9-0123-cdef-01234567890c" }'
+  -d '{ "refresh_token": "c4d5e6f7-a8b9-0123-cdef-01234567890c" }\'
 ```
 
 ### Logout
@@ -152,8 +173,8 @@ curl -X POST '{{BASE_URL}}/athletes/b2c3d4e5-f6a7-8901-bcde-f12345678901/activit
   -H 'Content-Type: application/json' \
   -d '{
     "templateId": "tmpl-fb-training-v1",
-    "activityTypeId": "FOOTBALL_TRAINING",
-    "sportId": "FOOTBALL",
+    "activityTypeId": "at-training",
+    "sportId": "sp-football",
     "title": "Tactical session — pressing from front",
     "activityDate": "2024-06-12",
     "location": "FC Lagos Training Ground",
@@ -245,6 +266,8 @@ curl -X GET '{{BASE_URL}}/athletes/b2c3d4e5-f6a7-8901-bcde-f12345678901/developm
 
 ## 5. Available Endpoints
 
+> **Access:** Coach access to an athlete's data comes from an access grant: the athlete (or their guardian) grants it, or an organization affiliation creates one. Viewing needs `VIEW_STATS` or higher, and creating or editing activities needs `MANAGE`. Without a grant, `/athletes/{id}/...`, activity and media calls return `403`. Verifying an activity (`POST /activities/{id}/verify`) is allowed for any `COACH`.
+
 | Method | Path | Description |
 |---|---|---|
 | POST | `/auth/register` | Register account |
@@ -252,10 +275,12 @@ curl -X GET '{{BASE_URL}}/athletes/b2c3d4e5-f6a7-8901-bcde-f12345678901/developm
 | POST | `/auth/refresh` | Refresh tokens |
 | POST | `/auth/logout` | Log out |
 | GET | `/auth/verify-email` | Verify email |
-| POST | `/users/me/roles` | Assign COACH role |
+| POST | `/users/me/roles` | Add an extra non-privileged role (`COACH` etc.) |
 | GET | `/users/me` | Get account info |
 | GET | `/organizations/{id}/members` | List organization members |
-| GET | `/organizations/{id}/athletes` | List assigned athletes |
+| GET | `/organizations/{id}/athletes` | List the organization's athlete affiliations (members only) |
+| POST | `/organizations/{id}/invitations/accept` | Accept an invitation (`{ "invitationToken" }`) |
+| GET | `/organizations/mine` | Organizations you belong to |
 | POST | `/athletes/{id}/activities` | Submit activity for athlete |
 | GET | `/athletes/{id}/activities` | List athlete activities |
 | PATCH | `/activities/{id}` | Update draft activity |
@@ -273,7 +298,60 @@ curl -X GET '{{BASE_URL}}/athletes/b2c3d4e5-f6a7-8901-bcde-f12345678901/developm
 
 ## 6. Entitlements and Subscription
 
-Coaches access TalentHub through their organization's subscription. Individual coach accounts on the FREE plan can submit activities for assigned athletes but cannot upload videos over 1 GB or access advanced analytics.
+Limits come from your active subscription plan. Each plan sets a limit per entitlement key (for example `MAX_FAVOURITES`, `MAX_WATCHLISTS`, `MAX_SCOUT_SEATS`). A key the plan doesn't list is unlimited. Without an active subscription, the free-tier defaults apply:
+
+| Key | Free-tier limit |
+|---|---|
+| `max_athletes` | 5 |
+| `max_scouts` | 0 |
+| `max_video_uploads` | 3 |
+| `max_org_members` | 10 |
+| `video_max_duration_s` | 120 |
+
+Going over a limit returns `402 Payment Required` with the standard error envelope:
+
+```json
+{
+  "timestamp": "2024-06-15T15:00:00.000Z",
+  "status": 402,
+  "error": "Payment Required",
+  "message": "Entitlement limit exceeded for 'MAX_WATCHLISTS': current=3, limit=3",
+  "path": "/api/v1/scouting/watchlists"
+}
+```
+
+#### View plans and subscribe
+
+```bash
+curl -X GET '{{BASE_URL}}/subscription-plans' \
+  -H 'Authorization: Bearer {{ACCESS_TOKEN}}'
+
+curl -X POST '{{BASE_URL}}/subscriptions' \
+  -H 'Authorization: Bearer {{ACCESS_TOKEN}}' \
+  -H 'Content-Type: application/json' \
+  -d '{ "planId": "plan-0003" }'
+```
+
+A free plan starts straight away (`status: "ACTIVE"`). A paid plan starts as `PENDING`. To pay, start checkout and send the user to `authorizationUrl`:
+
+```bash
+curl -X POST '{{BASE_URL}}/subscriptions/sub-0001/checkout' \
+  -H 'Authorization: Bearer {{ACCESS_TOKEN}}'
+```
+
+**Response (201 Created):**
+```json
+{
+  "transactionId": "tx-0001",
+  "reference": "ps_ref_7h2k9",
+  "authorizationUrl": "https://checkout.paystack.com/7h2k9",
+  "accessCode": "7h2k9"
+}
+```
+
+When the payment provider confirms the payment, the subscription becomes `ACTIVE`.
+
+#### View your subscription
 
 ```bash
 curl -X GET '{{BASE_URL}}/subscriptions/me' \
@@ -283,17 +361,35 @@ curl -X GET '{{BASE_URL}}/subscriptions/me' \
 **Response (200 OK):**
 ```json
 {
-  "planCode": "FREE",
+  "id": "sub-0001",
+  "subscriberId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "plan": {
+    "id": "plan-0003",
+    "code": "SCOUT_PRO",
+    "name": "Scout Pro",
+    "targetRole": "SCOUT",
+    "pricePerMonth": 29.00,
+    "currency": "USD",
+    "entitlementsJson": "{\"MAX_FAVOURITES\":200,\"MAX_WATCHLISTS\":20}",
+    "active": true
+  },
   "status": "ACTIVE",
-  "via": "ORGANIZATION",
-  "organizationPlan": "ACADEMY_PRO",
-  "entitlements": {
-    "activitySubmissionsUnlimited": true,
-    "videoUploadAllowed": true,
-    "maxVideoStorageGb": 50
-  }
+  "startsAt": "2024-06-15T10:00:00Z",
+  "expiresAt": null,
+  "graceEndsAt": null,
+  "cancelledAt": null,
+  "cancelledBy": null,
+  "cancellationReason": null,
+  "renewsAt": null
 }
 ```
+
+`404` with an empty body means you have no active subscription. A `PENDING` one does not count.
+
+- **Cancel:** `POST /subscriptions/{id}/cancel?immediate=false&reason=...`.
+- **List add-ons:** `GET /subscriptions/{id}/addons`.
+
+Both only work for your own subscription, your organization's, or as an admin (`403` otherwise).
 
 ---
 
@@ -303,12 +399,110 @@ Coaches can access athlete data only for athletes explicitly assigned to them wi
 
 ---
 
-## 8. Error Reference
+## 8. Response Shapes, Pagination and Errors
 
-| Error Code | HTTP Status | Meaning | Example JSON |
+### Response shapes
+
+Successful responses return the resource directly as JSON, with no outer wrapper. A single resource is a JSON object, a list endpoint returns a page object (see below), and actions with nothing to return respond `204 No Content` with an empty body. Create endpoints respond `201 Created`. Timestamps are ISO-8601 UTC strings (for example `2024-06-01T10:15:30Z`). Fields with no value may be omitted from error bodies.
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "ACTIVE",
+  "createdAt": "2024-06-01T10:15:30Z"
+}
+```
+
+### Pagination format
+
+List endpoints accept standard query parameters and return a page object.
+
+| Parameter | Default | Description |
+|---|---|---|
+| `page` | `0` | Zero-based page index |
+| `size` | `20` | Items per page |
+| `sort` | endpoint default | `field,asc` or `field,desc`. Repeat the parameter to sort by several fields |
+
+```bash
+curl -X GET '{{BASE_URL}}/notifications?page=0&size=10&sort=createdAt,desc' \
+  -H 'Authorization: Bearer {{ACCESS_TOKEN}}'
+```
+
+**Response (200 OK):**
+```json
+{
+  "content": [ { "id": "n-1" }, { "id": "n-2" } ],
+  "page": 0,
+  "size": 10,
+  "totalElements": 42,
+  "totalPages": 5,
+  "first": true,
+  "last": false
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `content` | array | Items on this page. Empty array when there are no results |
+| `page` | integer | Zero-based index of this page |
+| `size` | integer | Requested page size |
+| `totalElements` | integer | Total items across all pages |
+| `totalPages` | integer | Total number of pages |
+| `first` | boolean | `true` on the first page |
+| `last` | boolean | `true` on the last page. Stop paging when this is `true` |
+
+Some examples in this guide show only part of the page object (for example `content` and `totalElements`) to keep them short. Real responses always include every field above.
+
+### Error envelope
+
+Errors raised by the API use one JSON structure for every endpoint:
+
+```json
+{
+  "timestamp": "2024-06-01T10:15:30.123Z",
+  "status": 404,
+  "error": "Not Found",
+  "message": "AthleteProfile not found for id: xyz",
+  "path": "/api/v1/athletes/xyz"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `timestamp` | string | When the error was produced (UTC) |
+| `status` | integer | HTTP status code, same as the response status |
+| `error` | string | HTTP reason phrase, such as `Not Found` or `Conflict` |
+| `message` | string | Human-readable explanation. Safe to show to users |
+| `path` | string | Request path that failed |
+| `fieldErrors` | array | Only on `400` validation failures. One entry per invalid field |
+
+Validation failures (`400`) add `fieldErrors`:
+
+```json
+{
+  "timestamp": "2024-06-01T10:15:30.123Z",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Validation failed",
+  "path": "/api/v1/auth/register",
+  "fieldErrors": [
+    { "field": "email", "rejectedValue": "not-an-email", "message": "must be a valid email" }
+  ]
+}
+```
+
+Branch on `status`, not on the `message` text. Missing or invalid bearer tokens (`401`) and permission failures (`403`) use the same envelope, so every error response is JSON. Unexpected failures return `500` with a generic message and no internal detail.
+
+### Error reference
+
+The `error` column is the value of the `error` field. Examples show `status`, `error` and `message`; `timestamp` and `path` are always present too.
+
+| HTTP Status | `error` | When it happens | Example |
 |---|---|---|---|
-| `UNAUTHORIZED` | 401 | Missing or expired token | `{ "error": "UNAUTHORIZED", "message": "Full authentication is required." }` |
-| `FORBIDDEN` | 403 | Not assigned to this athlete | `{ "error": "FORBIDDEN", "message": "You do not have MANAGE permission for this athlete." }` |
-| `NOT_FOUND` | 404 | Resource not found | `{ "error": "NOT_FOUND", "message": "AthleteProfile not found." }` |
-| `INVALID_STATE_TRANSITION` | 409 | Activity not in correct state | `{ "error": "INVALID_STATE_TRANSITION", "message": "Cannot publish a DRAFT activity. Submit first." }` |
-| `VALIDATION_ERROR` | 400 | Bad request | `{ "error": "VALIDATION_ERROR", "errors": [{ "field": "title", "message": "must not be blank" }] }` |
+| 401 | Unauthorized | Missing, invalid or expired token | `{ "status": 401, "error": "Unauthorized", "message": "Authentication is required to access this resource" }` |
+| 403 | Forbidden | Your role cannot call this endpoint | `{ "status": 403, "error": "Forbidden", "message": "Access denied" }` |
+| 403 | Forbidden | No affiliation or grant for this athlete | `{ "status": 403, "error": "Forbidden", "message": "You do not have VIEW_STATS permission for this athlete." }` |
+| 403 | Forbidden | Invitation sent to another email | `{ "status": 403, "error": "Forbidden", "message": "This invitation was sent to a different email address" }` |
+| 404 | Not Found | Resource not found | `{ "status": 404, "error": "Not Found", "message": "AthleteActivity not found with id: act-999" }` |
+| 409 | Conflict | Activity not in the right state | `{ "status": 409, "error": "Conflict", "message": "Cannot transition AthleteActivity from 'DRAFT' to 'PUBLISHED'" }` |
+| 400 | Bad Request | Request body failed validation | `{ "status": 400, "error": "Bad Request", "message": "Validation failed", "fieldErrors": [{ "field": "title", "rejectedValue": null, "message": "must not be blank" }] }` |

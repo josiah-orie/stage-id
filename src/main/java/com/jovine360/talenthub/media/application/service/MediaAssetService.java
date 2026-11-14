@@ -1,5 +1,7 @@
 package com.jovine360.talenthub.media.application.service;
 
+import com.jovine360.talenthub.athleteaccess.api.AthleteAccessPolicy;
+import com.jovine360.talenthub.athleteaccess.domain.model.AthletePermission;
 import com.jovine360.talenthub.media.domain.event.MediaUploadCompletedEvent;
 import com.jovine360.talenthub.media.domain.model.*;
 import com.jovine360.talenthub.media.domain.repository.MediaAccessAuditRepository;
@@ -13,11 +15,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Collection;
 import java.util.Set;
 
 @Service
 @Transactional
 public class MediaAssetService {
+
+    private static final Set<AssetType> SCOUT_VISIBLE_ASSETS =
+            Set.of(AssetType.ACTIVITY_VIDEO, AssetType.VIDEO_THUMBNAIL, AssetType.PROFILE_IMAGE);
 
     private static final Set<String> ALLOWED_MIMES = Set.of(
             "image/jpeg", "image/png", "video/mp4", "video/quicktime");
@@ -30,17 +36,20 @@ public class MediaAssetService {
     private final MediaAccessAuditRepository auditRepository;
     private final MediaStorageService storageService;
     private final ApplicationEventPublisher eventPublisher;
+    private final AthleteAccessPolicy accessPolicy;
 
     public MediaAssetService(MediaAssetRepository mediaAssetRepository,
                               MediaUploadSessionRepository sessionRepository,
                               MediaAccessAuditRepository auditRepository,
                               MediaStorageService storageService,
-                              ApplicationEventPublisher eventPublisher) {
+                              ApplicationEventPublisher eventPublisher,
+                              AthleteAccessPolicy accessPolicy) {
         this.mediaAssetRepository = mediaAssetRepository;
         this.sessionRepository = sessionRepository;
         this.auditRepository = auditRepository;
         this.storageService = storageService;
         this.eventPublisher = eventPublisher;
+        this.accessPolicy = accessPolicy;
     }
 
     /** Validates MIME type. */
@@ -53,7 +62,9 @@ public class MediaAssetService {
     /** Initiates upload: creates MediaAsset(INITIATED) + MediaUploadSession with 15-min presigned PUT URL. */
     public InitiateUploadResponse initiateUpload(String ownerId, OwnerType ownerType,
                                                    AssetType assetType, String originalFilename,
-                                                   String mimeType, String uploadedBy) {
+                                                   String mimeType, String uploadedBy,
+                                                   Collection<String> actorRoles) {
+        assertCanUpload(ownerId, ownerType, uploadedBy, actorRoles);
         validateMimeType(mimeType);
 
         String bucket = ownerType == OwnerType.ATHLETE ? "athlete-media"
@@ -87,9 +98,10 @@ public class MediaAssetService {
     }
 
     /** Verifies the object exists in MinIO, sets UPLOADED, publishes MediaUploadCompletedEvent. */
-    public MediaAsset completeUpload(String assetId) {
+    public MediaAsset completeUpload(String assetId, String actorId, Collection<String> actorRoles) {
         MediaAsset asset = mediaAssetRepository.findById(assetId)
                 .orElseThrow(() -> new EntityNotFoundException("MediaAsset", assetId));
+        assertCanManage(asset, actorId, actorRoles);
         if (!storageService.objectExists(asset.getBucketName(), asset.getObjectKey())) {
             throw new IllegalStateException("Object not found in storage for asset: " + assetId);
         }
@@ -111,9 +123,10 @@ public class MediaAssetService {
 
     /** Generates a 15-min presigned GET URL and writes MediaAccessAudit. */
     @Transactional
-    public String getPlaybackUrl(String assetId, String accessedBy) {
+    public String getPlaybackUrl(String assetId, String accessedBy, Collection<String> actorRoles) {
         MediaAsset asset = mediaAssetRepository.findById(assetId)
                 .orElseThrow(() -> new EntityNotFoundException("MediaAsset", assetId));
+        assertCanView(asset, accessedBy, actorRoles);
         if (asset.getProcessingStatus() != ProcessingStatus.READY) {
             throw new IllegalStateException("Media asset is not ready: " + assetId);
         }
@@ -133,14 +146,96 @@ public class MediaAssetService {
                 .orElseThrow(() -> new EntityNotFoundException("MediaAsset", assetId));
     }
 
+    @Transactional(readOnly = true)
+    public MediaAsset getById(String assetId, String actorId, Collection<String> actorRoles) {
+        MediaAsset asset = getById(assetId);
+        assertCanView(asset, actorId, actorRoles);
+        return asset;
+    }
+
     @Transactional
-    public void softDelete(String assetId) {
+    public void softDelete(String assetId, String actorId, Collection<String> actorRoles) {
         MediaAsset asset = mediaAssetRepository.findById(assetId)
                 .orElseThrow(() -> new EntityNotFoundException("MediaAsset", assetId));
+        assertCanManage(asset, actorId, actorRoles);
         asset.setProcessingStatus(ProcessingStatus.DELETED);
         asset.setDeletedAt(Instant.now());
         mediaAssetRepository.save(asset);
         storageService.softDelete(asset.getBucketName(), asset.getObjectKey());
+    }
+
+    // ---- moderation ------------------------------------------------------------------------
+
+    /** Marks an asset FLAGGED after it is reported. Restricted assets stay restricted. */
+    public void flag(String assetId, String note) {
+        mediaAssetRepository.findById(assetId).ifPresent(asset -> {
+            if (asset.getModerationStatus() == ModerationStatus.CLEAN) {
+                asset.setModerationStatus(ModerationStatus.FLAGGED);
+                asset.setModerationNote(note);
+                mediaAssetRepository.save(asset);
+            }
+        });
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<MediaAsset> listByModerationStatus(
+            ModerationStatus status, org.springframework.data.domain.Pageable pageable) {
+        return mediaAssetRepository.findByModerationStatus(status, pageable);
+    }
+
+    /** Admin decision. {@code CLEAN} approves; {@code RESTRICTED} hides the asset. */
+    public MediaAsset moderate(String assetId, ModerationStatus decision, String note, String adminId) {
+        if (decision == ModerationStatus.FLAGGED) {
+            throw new IllegalArgumentException("An admin decision must be CLEAN or RESTRICTED");
+        }
+        MediaAsset asset = getById(assetId);
+        if (asset.getModerationStatus() == decision) {
+            throw new com.jovine360.talenthub.shared.domain.exception.InvalidStateTransitionException(
+                    "MediaAsset", asset.getModerationStatus().name(), decision.name());
+        }
+        asset.setModerationStatus(decision);
+        asset.setModerationNote(note);
+        asset.setModeratedBy(adminId);
+        asset.setModeratedAt(Instant.now());
+        return mediaAssetRepository.save(asset);
+    }
+
+    // ---- authorisation -----------------------------------------------------------------------
+
+    private void assertCanUpload(String ownerId, OwnerType ownerType, String actorId, Collection<String> roles) {
+        if (!canManageOwner(ownerId, ownerType, actorId, roles)) {
+            throw new SecurityException("You cannot upload media for this owner");
+        }
+    }
+
+    private void assertCanManage(MediaAsset asset, String actorId, Collection<String> roles) {
+        boolean uploader = actorId != null && actorId.equals(asset.getUploadedBy());
+        if (!uploader && !canManageOwner(asset.getOwnerId(), asset.getOwnerType(), actorId, roles)) {
+            throw new SecurityException("You cannot modify this media asset");
+        }
+    }
+
+    private void assertCanView(MediaAsset asset, String actorId, Collection<String> roles) {
+        boolean uploader = actorId != null && actorId.equals(asset.getUploadedBy());
+        if (uploader || canManageOwner(asset.getOwnerId(), asset.getOwnerType(), actorId, roles)) return;
+        if (asset.getModerationStatus() == ModerationStatus.RESTRICTED) {
+            throw new SecurityException("This media asset is not accessible.");
+        }
+        if (asset.getAssetType() == AssetType.ORG_LOGO) return; // logos are public
+        if (asset.getOwnerType() == OwnerType.ATHLETE) {
+            if (accessPolicy.canAccess(asset.getOwnerId(), actorId, roles, AthletePermission.VIEW_STATS)) return;
+            if (roles.contains("SCOUT") && SCOUT_VISIBLE_ASSETS.contains(asset.getAssetType())) return;
+        }
+        throw new SecurityException("You cannot access this media asset");
+    }
+
+    private boolean canManageOwner(String ownerId, OwnerType ownerType, String actorId, Collection<String> roles) {
+        if (roles.contains("ADMIN") || roles.contains("SUPER_ADMIN")) return true;
+        return switch (ownerType) {
+            case ATHLETE -> accessPolicy.canAccess(ownerId, actorId, roles, AthletePermission.MANAGE);
+            case USER -> ownerId.equals(actorId);
+            case ORGANIZATION -> roles.contains("ORG_ADMIN");
+        };
     }
 
     public record InitiateUploadResponse(String assetId, String presignedUrl, Instant expiry) {}

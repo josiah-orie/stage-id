@@ -22,7 +22,7 @@ public class VerificationController {
     public ResponseEntity<Void> verifyActivity(
             @PathVariable String id,
             @AuthenticationPrincipal AuthenticatedPrincipal principal) {
-        verificationService.verifyActivity(id, principal.userId());
+        verificationService.verifyActivity(id, principal.userId(), principal.roles());
         return ResponseEntity.ok().build();
     }
 }

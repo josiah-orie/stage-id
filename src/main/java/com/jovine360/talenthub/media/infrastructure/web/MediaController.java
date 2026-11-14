@@ -38,25 +38,28 @@ public class MediaController {
                 AssetType.valueOf(req.assetType()),
                 req.originalFilename(),
                 req.mimeType(),
-                principal.userId());
+                principal.userId(),
+                principal.roles());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/uploads/{id}/complete")
-    public ResponseEntity<MediaAsset> completeUpload(@PathVariable String id) {
-        return ResponseEntity.ok(mediaAssetService.completeUpload(id));
+    public ResponseEntity<MediaAsset> completeUpload(
+            @PathVariable String id, @AuthenticationPrincipal AuthenticatedPrincipal principal) {
+        return ResponseEntity.ok(mediaAssetService.completeUpload(id, principal.userId(), principal.roles()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MediaAsset> getAsset(@PathVariable String id) {
-        return ResponseEntity.ok(mediaAssetService.getById(id));
+    public ResponseEntity<MediaAsset> getAsset(
+            @PathVariable String id, @AuthenticationPrincipal AuthenticatedPrincipal principal) {
+        return ResponseEntity.ok(mediaAssetService.getById(id, principal.userId(), principal.roles()));
     }
 
     @GetMapping("/{id}/playback")
     public ResponseEntity<Map<String, String>> getPlaybackUrl(
             @PathVariable String id,
             @AuthenticationPrincipal AuthenticatedPrincipal principal) {
-        String url = mediaAssetService.getPlaybackUrl(id, principal.userId());
+        String url = mediaAssetService.getPlaybackUrl(id, principal.userId(), principal.roles());
         return ResponseEntity.ok(Map.of("url", url));
     }
 
@@ -64,7 +67,7 @@ public class MediaController {
     public ResponseEntity<Void> deleteAsset(
             @PathVariable String id,
             @AuthenticationPrincipal AuthenticatedPrincipal principal) {
-        mediaAssetService.softDelete(id);
+        mediaAssetService.softDelete(id, principal.userId(), principal.roles());
         return ResponseEntity.noContent().build();
     }
 }

@@ -79,6 +79,20 @@ public class ActivityConfigurationService implements ActivityConfigApi {
 
     // ---- Admin operations ------------------------------------------------
 
+    /** Creates and saves an activity type. 409 if the code is already in use. */
+    public ActivityType createActivityType(ActivityTypeCode code, String name, String description) {
+        if (typeRepository.findByCode(code).isPresent()) {
+            throw new com.jovine360.talenthub.shared.domain.exception.DuplicateResourceException(
+                    "ActivityType", "code", code);
+        }
+        ActivityType type = new ActivityType();
+        type.setCode(code);
+        type.setName(name);
+        type.setDescription(description);
+        type.setActive(true);
+        return typeRepository.save(type);
+    }
+
     public ActivityTemplate createTemplate(String activityTypeId, String sportId,
                                            String name, String description) {
         ActivityTemplate template = new ActivityTemplate();
@@ -88,7 +102,46 @@ public class ActivityConfigurationService implements ActivityConfigApi {
         template.setDescription(description);
         template.setCode(name.toUpperCase().replaceAll("\\s+", "_"));
         template.setActive(true);
-        return templateRepository.save(template);
+        ActivityTemplate saved = templateRepository.save(template);
+
+        // Every template starts with an empty DRAFT schema, version 1, ready for fields
+        ActivitySchemaVersion v1 = new ActivitySchemaVersion();
+        v1.setTemplateId(saved.getId());
+        v1.setVersionNumber(1);
+        v1.setStatus(SchemaStatus.DRAFT);
+        v1.setEffectiveDate(LocalDate.now());
+        schemaVersionRepository.save(v1);
+        return saved;
+    }
+
+    /**
+     * The template's current DRAFT schema version. If none exists, a new draft is created from
+     * the latest version (copying its fields), so a published schema can be revised.
+     */
+    public ActivitySchemaVersion currentDraft(String templateId) {
+        if (!templateRepository.existsById(templateId)) {
+            throw new EntityNotFoundException("ActivityTemplate", templateId);
+        }
+        return schemaVersionRepository.findFirstByTemplateIdAndStatusOrderByVersionNumberDesc(templateId, SchemaStatus.DRAFT)
+                .orElseGet(() -> schemaVersionRepository.findByTemplateIdOrderByVersionNumberDesc(templateId).stream()
+                        .findFirst()
+                        .map(latest -> createNewVersion(latest.getId()))
+                        .orElseGet(() -> {
+                            ActivitySchemaVersion v1 = new ActivitySchemaVersion();
+                            v1.setTemplateId(templateId);
+                            v1.setVersionNumber(1);
+                            v1.setStatus(SchemaStatus.DRAFT);
+                            v1.setEffectiveDate(LocalDate.now());
+                            return schemaVersionRepository.save(v1);
+                        }));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ActivitySchemaVersion> listVersions(String templateId) {
+        if (!templateRepository.existsById(templateId)) {
+            throw new EntityNotFoundException("ActivityTemplate", templateId);
+        }
+        return schemaVersionRepository.findByTemplateIdOrderByVersionNumberDesc(templateId);
     }
 
     public ActivityFieldDefinition addField(String schemaVersionId, String fieldCode,
@@ -170,6 +223,10 @@ public class ActivityConfigurationService implements ActivityConfigApi {
     public ActivitySchemaVersion deprecateSchema(String schemaVersionId) {
         ActivitySchemaVersion version = schemaVersionRepository.findById(schemaVersionId)
                 .orElseThrow(() -> new EntityNotFoundException("ActivitySchemaVersion", schemaVersionId));
+        if (version.getStatus() != SchemaStatus.PUBLISHED) {
+            throw new InvalidStateTransitionException(
+                    "ActivitySchemaVersion", version.getStatus().name(), "DEPRECATED");
+        }
         version.setStatus(SchemaStatus.DEPRECATED);
         return schemaVersionRepository.save(version);
     }
@@ -178,6 +235,15 @@ public class ActivityConfigurationService implements ActivityConfigApi {
     public List<ActivityTemplateDto> listBySport(String sportCode) {
         return templateRepository.findBySportCodeAndActiveTrue(sportCode).stream()
                 .map(this::toTemplateDto).toList();
+    }
+
+    /** Active templates for a sport, given either its id or its code. */
+    @Transactional(readOnly = true)
+    public List<ActivityTemplateDto> listBySportIdOrCode(String sportIdOrCode) {
+        java.util.Map<String, ActivityTemplate> byId = new java.util.LinkedHashMap<>();
+        templateRepository.findBySportIdAndActiveTrue(sportIdOrCode).forEach(t -> byId.put(t.getId(), t));
+        templateRepository.findBySportCodeAndActiveTrue(sportIdOrCode).forEach(t -> byId.put(t.getId(), t));
+        return byId.values().stream().map(this::toTemplateDto).toList();
     }
 
     // ---- Mappers ---------------------------------------------------------

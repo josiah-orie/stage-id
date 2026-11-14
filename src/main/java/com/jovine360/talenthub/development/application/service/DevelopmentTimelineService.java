@@ -54,4 +54,30 @@ public class DevelopmentTimelineService {
         entries.sort(Comparator.comparing(TimelineEntry::date).reversed());
         return new DevelopmentTimelineResponse(athleteId, entries);
     }
+
+    @Transactional
+    public com.jovine360.talenthub.development.api.MilestoneDto addMilestone(
+            String athleteId, com.jovine360.talenthub.development.api.CreateMilestoneRequest req, String createdBy) {
+        DevelopmentMilestone m = new DevelopmentMilestone();
+        m.setAthleteId(athleteId);
+        m.setSportId(req.sportId());
+        m.setMilestoneType(req.milestoneType() != null
+                ? req.milestoneType() : com.jovine360.talenthub.development.domain.model.MilestoneType.ACHIEVEMENT);
+        m.setTitle(req.title());
+        m.setDescription(req.description());
+        m.setMilestoneDate(req.achievedAt() != null ? req.achievedAt() : java.time.LocalDate.now());
+        m.setEvidenceActivityId(req.evidenceActivityId());
+        m.setCreatedBy(createdBy);
+        return toDto(milestoneRepository.save(m));
+    }
+
+    public java.util.List<com.jovine360.talenthub.development.api.MilestoneDto> listMilestones(String athleteId) {
+        return milestoneRepository.findByAthleteIdOrderByMilestoneDateDesc(athleteId).stream().map(this::toDto).toList();
+    }
+
+    private com.jovine360.talenthub.development.api.MilestoneDto toDto(DevelopmentMilestone m) {
+        return new com.jovine360.talenthub.development.api.MilestoneDto(m.getId(), m.getAthleteId(), m.getSportId(),
+                m.getMilestoneType().name(), m.getTitle(), m.getDescription(), m.getMilestoneDate(),
+                m.getEvidenceActivityId(), m.getCreatedBy());
+    }
 }

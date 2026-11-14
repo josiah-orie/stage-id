@@ -9,11 +9,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -68,6 +71,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(ApiError.of(403, "Forbidden", "Access denied", req.getRequestURI()));
+    }
+
+    /** Thrown by services for ownership/authorisation failures that are not Spring Security exceptions. */
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ApiError> handleSecurity(SecurityException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiError.of(403, "Forbidden", ex.getMessage(), req.getRequestURI()));
+    }
+
+    @ExceptionHandler({MissingServletRequestParameterException.class,
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ApiError> handleMalformedRequest(Exception ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiError.of(400, "Bad Request", "Malformed or missing request data", req.getRequestURI()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

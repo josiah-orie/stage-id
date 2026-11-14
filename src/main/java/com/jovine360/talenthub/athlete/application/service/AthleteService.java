@@ -23,15 +23,18 @@ public class AthleteService implements AthleteApi {
     private final AthleteNumberGeneratorService numberGenerator;
     private final SportConfigApi sportConfigApi;
     private final MeterRegistry meterRegistry;
+    private final com.jovine360.talenthub.athlete.domain.repository.AthleteSportRepository athleteSportRepository;
 
     public AthleteService(AthleteProfileRepository athleteProfileRepository,
                           AthleteNumberGeneratorService numberGenerator,
                           SportConfigApi sportConfigApi,
-                          MeterRegistry meterRegistry) {
+                          MeterRegistry meterRegistry,
+                          com.jovine360.talenthub.athlete.domain.repository.AthleteSportRepository athleteSportRepository) {
         this.athleteProfileRepository = athleteProfileRepository;
         this.numberGenerator = numberGenerator;
         this.sportConfigApi = sportConfigApi;
         this.meterRegistry = meterRegistry;
+        this.athleteSportRepository = athleteSportRepository;
     }
 
     public AthleteProfileDto createAthleteProfile(String userId, CreateAthleteProfileRequest req) {
@@ -114,5 +117,51 @@ public class AthleteService implements AthleteApi {
                 p.getDominantFoot(), p.getStatus() != null ? p.getStatus().name() : null,
                 p.getOrganizationId(), p.getNationality()
         );
+    }
+
+    // ---- sports --------------------------------------------------------------------------
+
+    /** The primary sport (from the profile) first, then secondary sports. */
+    @Transactional(readOnly = true)
+    public java.util.List<com.jovine360.talenthub.athlete.api.AthleteSportDto> listSports(String athleteUserId) {
+        AthleteProfile profile = athleteProfileRepository.findByUserId(athleteUserId)
+                .orElseThrow(() -> new EntityNotFoundException("AthleteProfile", athleteUserId));
+        java.util.List<com.jovine360.talenthub.athlete.api.AthleteSportDto> out = new java.util.ArrayList<>();
+        if (profile.getPrimarySportId() != null) {
+            out.add(new com.jovine360.talenthub.athlete.api.AthleteSportDto(null, athleteUserId,
+                    profile.getPrimarySportId(), profile.getPrimarySportCode(), profile.getPosition(), true));
+        }
+        athleteSportRepository.findByAthleteUserId(athleteUserId).forEach(x -> out.add(toDto(x)));
+        return out;
+    }
+
+    public com.jovine360.talenthub.athlete.api.AthleteSportDto addSport(
+            String athleteUserId, com.jovine360.talenthub.athlete.api.AddAthleteSportRequest req) {
+        AthleteProfile profile = athleteProfileRepository.findByUserId(athleteUserId)
+                .orElseThrow(() -> new EntityNotFoundException("AthleteProfile", athleteUserId));
+        var sport = sportConfigApi.findByCode(req.sportCode())
+                .orElseThrow(() -> new EntityNotFoundException("Sport", req.sportCode()));
+        if (sport.id().equals(profile.getPrimarySportId())
+                || athleteSportRepository.findByAthleteUserIdAndSportId(athleteUserId, sport.id()).isPresent()) {
+            throw new DuplicateResourceException("AthleteSport", "sportCode", req.sportCode());
+        }
+        com.jovine360.talenthub.athlete.domain.model.AthleteSport as = new com.jovine360.talenthub.athlete.domain.model.AthleteSport();
+        as.setAthleteUserId(athleteUserId);
+        as.setSportId(sport.id());
+        as.setSportCode(sport.code());
+        as.setPosition(req.position());
+        return toDto(athleteSportRepository.save(as));
+    }
+
+    public void removeSport(String athleteUserId, String athleteSportId) {
+        var as = athleteSportRepository.findById(athleteSportId)
+                .filter(x -> x.getAthleteUserId().equals(athleteUserId))
+                .orElseThrow(() -> new EntityNotFoundException("AthleteSport", athleteSportId));
+        athleteSportRepository.delete(as);
+    }
+
+    private com.jovine360.talenthub.athlete.api.AthleteSportDto toDto(com.jovine360.talenthub.athlete.domain.model.AthleteSport x) {
+        return new com.jovine360.talenthub.athlete.api.AthleteSportDto(x.getId(), x.getAthleteUserId(),
+                x.getSportId(), x.getSportCode(), x.getPosition(), false);
     }
 }

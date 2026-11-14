@@ -41,7 +41,9 @@ public class AthleteDiscoveryService {
 
     @Transactional(readOnly = true)
     public AthleteSearchProjection getDiscoveryProfile(String athleteId) {
+        // Hidden athletes (consent withdrawn or private) look exactly like unknown ones
         return projectionRepository.findByAthleteId(athleteId)
+                .filter(p -> !"PRIVATE".equals(p.getVisibilityLevel()))
                 .orElseThrow(() -> new EntityNotFoundException("AthleteSearchProjection", athleteId));
     }
 
@@ -60,6 +62,25 @@ public class AthleteDiscoveryService {
     }
 
     // ---- Event listeners ------------------------------------------------
+
+    /** Withdrawing PROFILE_DISCOVERY consent hides the athlete from discovery straight away. */
+    @org.springframework.context.event.EventListener
+    void onConsentRevoked(com.jovine360.talenthub.safeguarding.domain.event.AthleteConsentRevokedEvent event) {
+        if ("PROFILE_DISCOVERY".equals(event.purposeCode())) setVisibility(event.athleteId(), "PRIVATE");
+    }
+
+    @org.springframework.context.event.EventListener
+    void onConsentGranted(com.jovine360.talenthub.safeguarding.api.AthleteConsentGrantedEvent event) {
+        if ("PROFILE_DISCOVERY".equals(event.purposeCode())) setVisibility(event.athleteId(), "PUBLIC");
+    }
+
+    private void setVisibility(String athleteId, String level) {
+        projectionRepository.findByAthleteId(athleteId).ifPresent(p -> {
+            p.setVisibilityLevel(level);
+            p.setUpdatedAt(Instant.now());
+            projectionRepository.save(p);
+        });
+    }
 
     @ApplicationModuleListener
     void onActivityPublished(AthleteActivityPublishedEvent event) {

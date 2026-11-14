@@ -10,4 +10,5 @@ public interface SportConfigApi {
     List<SportDto> listActiveSports();
     Optional<SportDto> findByCode(String code);
     boolean sportExists(String code);
+    Optional<SportDto> getSportById(String id);
 }

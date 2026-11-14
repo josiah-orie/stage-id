@@ -10,4 +10,5 @@ public interface ActivityTemplateRepository extends JpaRepository<ActivityTempla
     Optional<ActivityTemplate> findByCode(String code);
     List<ActivityTemplate> findByActiveTrue();
     List<ActivityTemplate> findBySportCodeAndActiveTrue(String sportCode);
+    java.util.List<com.jovine360.talenthub.activityconfiguration.domain.model.ActivityTemplate> findBySportIdAndActiveTrue(String sportId);
 }

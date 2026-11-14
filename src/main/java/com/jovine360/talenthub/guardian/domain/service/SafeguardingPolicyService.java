@@ -45,7 +45,7 @@ public class SafeguardingPolicyService {
         boolean hasConsent = guardianLinkRepository
                 .findByAthleteUserIdAndStatus(athleteUserId, GuardianLinkStatus.ACTIVE)
                 .stream()
-                .anyMatch(link -> link.isConsentGiven());
+                .anyMatch(link -> link.isEffectivelyActive() && link.isGuardianLevel());
 
         if (!hasConsent) {
             throw new SafeguardingViolationException("GUARDIAN_CONSENT_REQUIRED",

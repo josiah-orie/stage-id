@@ -31,8 +31,10 @@ public class NotificationController {
     }
 
     @PatchMapping("/{id}/read")
-    public ResponseEntity<Notification> markRead(@PathVariable String id) {
-        return ResponseEntity.ok(notificationService.markRead(id));
+    public ResponseEntity<Notification> markRead(@PathVariable String id,
+            @AuthenticationPrincipal AuthenticatedPrincipal principal) {
+        // Someone else's notification is reported as not found, so ids cannot be probed
+        return ResponseEntity.ok(notificationService.markRead(id, principal.userId()));
     }
 
     @GetMapping("/preferences")

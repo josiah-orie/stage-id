@@ -1,15 +1,22 @@
 package com.jovine360.talenthub.identity.domain.model;
 
 import com.jovine360.talenthub.shared.domain.model.AuditableEntity;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Core user account entity — stores authentication credentials and role.
@@ -34,6 +41,13 @@ public class User extends AuditableEntity {
     @Column(name = "status", nullable = false, length = 30)
     private UserStatus status = UserStatus.PENDING_VERIFICATION;
 
+    /** Roles held in addition to the primary {@link #role}. Stored in {@code user_roles}. */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", length = 50, nullable = false)
+    private Set<UserRole> additionalRoles = new LinkedHashSet<>();
+
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 
@@ -57,6 +71,18 @@ public class User extends AuditableEntity {
 
     @Column(name = "locked_until")
     private Instant lockedUntil;
+
+    /** The primary role followed by any additional roles, without duplicates. */
+    public List<UserRole> allRoles() {
+        Set<UserRole> all = new LinkedHashSet<>();
+        all.add(role);
+        all.addAll(additionalRoles);
+        return List.copyOf(all);
+    }
+
+    public boolean hasRole(UserRole r) {
+        return role == r || additionalRoles.contains(r);
+    }
 
     public boolean isLocked() {
         return lockedUntil != null && Instant.now().isBefore(lockedUntil);

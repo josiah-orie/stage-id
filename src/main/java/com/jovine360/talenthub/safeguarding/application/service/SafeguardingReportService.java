@@ -14,9 +14,12 @@ import java.util.List;
 public class SafeguardingReportService {
 
     private final SafeguardingReportRepository reportRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
-    public SafeguardingReportService(SafeguardingReportRepository reportRepository) {
+    public SafeguardingReportService(SafeguardingReportRepository reportRepository,
+                                     org.springframework.context.ApplicationEventPublisher eventPublisher) {
         this.reportRepository = reportRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public SafeguardingReport submitReport(String reporterId, String reportedEntityId,
@@ -29,12 +32,23 @@ public class SafeguardingReportService {
         report.setDescription(description);
         report.setStatus("PENDING");
         report.setSubmittedAt(Instant.now());
-        return reportRepository.save(report);
+        SafeguardingReport saved = reportRepository.save(report);
+        eventPublisher.publishEvent(new com.jovine360.talenthub.safeguarding.api.SafeguardingReportSubmittedEvent(
+                saved.getId(), saved.getReportedEntityId(), saved.getReportedEntityType(), saved.getReportType()));
+        return saved;
     }
 
     @Transactional(readOnly = true)
     public List<SafeguardingReport> getMyReports(String reporterId) {
         return reportRepository.findByReporterId(reporterId);
+    }
+
+    /** Admin listing. {@code status} null means every status. */
+    @Transactional(readOnly = true)
+    public List<SafeguardingReport> listReports(String status) {
+        return status == null || status.isBlank()
+                ? reportRepository.findAll()
+                : reportRepository.findByStatus(status.toUpperCase());
     }
 
     public SafeguardingReport reviewReport(String reportId, String status, String resolvedBy) {

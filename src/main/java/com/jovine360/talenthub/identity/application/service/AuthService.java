@@ -6,6 +6,7 @@ import com.jovine360.talenthub.identity.application.command.RefreshTokenCommand;
 import com.jovine360.talenthub.identity.application.command.RegisterUserCommand;
 import com.jovine360.talenthub.identity.domain.event.UserRegisteredEvent;
 import com.jovine360.talenthub.identity.domain.exception.AccountLockedException;
+import com.jovine360.talenthub.identity.domain.exception.AccountSuspendedException;
 import com.jovine360.talenthub.identity.domain.exception.InvalidCredentialsException;
 import com.jovine360.talenthub.identity.domain.model.RefreshToken;
 import com.jovine360.talenthub.identity.domain.model.User;
@@ -54,6 +55,10 @@ public class AuthService {
      * Registers a new user account and publishes {@link UserRegisteredEvent}.
      */
     public String register(RegisterUserCommand cmd) {
+        if (cmd.role().isPrivileged()) {
+            throw new IllegalArgumentException(
+                    "Role " + cmd.role() + " cannot be self-assigned at registration");
+        }
         if (userRepository.existsByEmail(cmd.email())) {
             throw new DuplicateResourceException("User", "email", cmd.email());
         }
@@ -90,12 +95,15 @@ public class AuthService {
             throw new InvalidCredentialsException();
         }
 
+        if (user.getStatus() == UserStatus.SUSPENDED || user.getStatus() == UserStatus.DEACTIVATED) {
+            throw new AccountSuspendedException();
+        }
         user.resetFailedAttempts();
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
         String accessToken = jwtTokenService.generateAccessToken(
-                user.getId(), user.getEmail(), List.of(user.getRole().name()));
+                user.getId(), user.getEmail(), roleNames(user));
 
         String rawRefreshToken = UUID.randomUUID().toString();
         RefreshToken refreshToken = new RefreshToken();
@@ -128,8 +136,11 @@ public class AuthService {
         refreshTokenRepository.save(matched);
 
         User user = matched.getUser();
+        if (user.getStatus() == UserStatus.SUSPENDED || user.getStatus() == UserStatus.DEACTIVATED) {
+            throw new AccountSuspendedException();
+        }
         String accessToken = jwtTokenService.generateAccessToken(
-                user.getId(), user.getEmail(), List.of(user.getRole().name()));
+                user.getId(), user.getEmail(), roleNames(user));
 
         String rawRefreshToken = UUID.randomUUID().toString();
         RefreshToken newToken = new RefreshToken();
@@ -208,5 +219,9 @@ public class AuthService {
 
         // Revoke all refresh tokens after password change
         refreshTokenRepository.revokeAllByUser(user);
+    }
+
+    private static List<String> roleNames(User user) {
+        return user.allRoles().stream().map(Enum::name).toList();
     }
 }

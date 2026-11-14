@@ -8,5 +8,6 @@ import java.util.List;
 public interface WatchlistAthleteRepository extends JpaRepository<WatchlistAthlete, String> {
     List<WatchlistAthlete> findByWatchlistId(String watchlistId);
     List<WatchlistAthlete> findByAthleteId(String athleteId);
+    boolean existsByWatchlistIdAndAthleteId(String watchlistId, String athleteId);
     void deleteByWatchlistIdAndAthleteId(String watchlistId, String athleteId);
 }

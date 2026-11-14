@@ -72,6 +72,11 @@ public class PerformanceMeasurementService {
     }
 
     @Transactional(readOnly = true)
+    public List<PerformanceMeasurement> getByActivity(String activityId) {
+        return measurementRepository.findBySourceActivityId(activityId);
+    }
+
+    @Transactional(readOnly = true)
     public List<PerformanceMeasurement> getMeasurementHistory(String athleteId) {
         return measurementRepository.findActiveByAthleteId(athleteId);
     }

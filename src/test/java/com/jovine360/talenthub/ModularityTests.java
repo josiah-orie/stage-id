@@ -210,3 +210,4 @@ class ModularityTests {
         assertThat(names).contains(
                 "scout", "discovery", "scouting", "notification", "safeguarding");
     }
+}

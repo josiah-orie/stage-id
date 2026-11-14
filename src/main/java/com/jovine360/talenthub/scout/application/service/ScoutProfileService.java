@@ -105,6 +105,31 @@ public class ScoutProfileService implements ScoutApi {
 
     @Override
     @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<ScoutProfileDto> listByVerificationStatus(
+            String status, org.springframework.data.domain.Pageable pageable) {
+        if (status == null || status.isBlank()) {
+            return profileRepository.findAll(pageable).map(this::toDto);
+        }
+        return profileRepository.findByVerificationStatus(
+                ScoutVerificationStatus.valueOf(status.toUpperCase()), pageable).map(this::toDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> findScoutProfileIdByUserId(String userAccountId) {
+        return profileRepository.findByUserAccountId(userAccountId).map(p -> p.getId());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String requireScoutProfileIdForUser(String userAccountId) {
+        return findScoutProfileIdByUserId(userAccountId)
+                .orElseThrow(() -> new com.jovine360.talenthub.shared.domain.exception.EntityNotFoundException(
+                        "No scout profile exists for this account. Create one with POST /scouts first."));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean isVerifiedScout(String userAccountId) {
         return profileRepository.findByUserAccountId(userAccountId)
                 .map(p -> p.getVerificationStatus() == ScoutVerificationStatus.VERIFIED)

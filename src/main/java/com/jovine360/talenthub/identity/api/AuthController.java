@@ -112,9 +112,9 @@ public class AuthController {
             @AuthenticationPrincipal AuthenticatedPrincipal principal) {
         boolean valid = adminMfaService.verifyCode(request.secret(), request.code());
         if (!valid) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "INVALID_MFA_CODE",
-                            "message", "The TOTP code is invalid or has expired."));
+            // Rendered as the standard ApiError envelope with status 401
+            throw new org.springframework.security.authentication.BadCredentialsException(
+                    "The TOTP code is invalid or has expired.");
         }
         return ResponseEntity.ok(Map.of("verified", true,
                 "message", "MFA verification successful."));

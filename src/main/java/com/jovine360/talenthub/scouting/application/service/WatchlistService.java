@@ -38,6 +38,10 @@ public class WatchlistService {
     }
 
     public ScoutFavourite addFavourite(String scoutProfileId, String athleteId, String notes) {
+        if (favouriteRepository.findByScoutProfileIdAndAthleteId(scoutProfileId, athleteId).isPresent()) {
+            throw new com.jovine360.talenthub.shared.domain.exception.DuplicateResourceException(
+                    "Athlete is already in your favourites");
+        }
         long current = favouriteRepository.countByScoutProfileId(scoutProfileId);
         entitlementService.assertWithinLimit(scoutProfileId, "MAX_FAVOURITES", current);
         ScoutFavourite fav = new ScoutFavourite();
@@ -75,6 +79,10 @@ public class WatchlistService {
                                             String addedBy, String notes) {
         Watchlist watchlist = watchlistRepository.findById(watchlistId)
                 .orElseThrow(() -> new EntityNotFoundException("Watchlist", watchlistId));
+        if (watchlistAthleteRepository.existsByWatchlistIdAndAthleteId(watchlistId, athleteId)) {
+            throw new com.jovine360.talenthub.shared.domain.exception.DuplicateResourceException(
+                    "Athlete is already in this watchlist");
+        }
         WatchlistAthlete wa = new WatchlistAthlete();
         wa.setWatchlistId(watchlistId);
         wa.setAthleteId(athleteId);
@@ -92,12 +100,39 @@ public class WatchlistService {
     }
 
     @Transactional(readOnly = true)
+    public List<Watchlist> getWatchlistsOwnedBy(String ownerId) {
+        return watchlistRepository.findByOwnerId(ownerId);
+    }
+
+    /** The owner can read any of their watchlists; others only shared ones. */
+    @Transactional(readOnly = true)
+    public Watchlist getReadableWatchlist(String watchlistId, String userId) {
+        Watchlist w = getWatchlist(watchlistId);
+        if (!w.getOwnerId().equals(userId) && !w.isShared()) {
+            throw new SecurityException("This watchlist belongs to another user");
+        }
+        return w;
+    }
+
+    @Transactional(readOnly = true)
+    public void assertOwner(String watchlistId, String userId) {
+        if (!getWatchlist(watchlistId).getOwnerId().equals(userId)) {
+            throw new SecurityException("Only the watchlist owner can change it");
+        }
+    }
+
+    @Transactional(readOnly = true)
     public Watchlist getWatchlist(String watchlistId) {
         return watchlistRepository.findById(watchlistId)
                 .orElseThrow(() -> new EntityNotFoundException("Watchlist", watchlistId));
     }
 
+    /** Idempotent: following an athlete you already follow returns the existing follow. */
     public AthleteFollow followAthlete(String followerId, OwnerType followerType, String athleteId) {
+        var existing = followRepository.findFirstByFollowerIdAndAthleteId(followerId, athleteId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
         AthleteFollow follow = new AthleteFollow();
         follow.setFollowerId(followerId);
         follow.setFollowerType(followerType);
@@ -107,5 +142,18 @@ public class WatchlistService {
         AthleteFollow saved = followRepository.save(follow);
         eventPublisher.publishEvent(new AthleteFollowedEvent(followerId, followerType.name(), athleteId));
         return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public List<AthleteFollow> getFollows(String followerId) {
+        return followRepository.findByFollowerId(followerId);
+    }
+
+    public void unfollow(String followerId, String athleteId) {
+        List<AthleteFollow> follows = followRepository.findByFollowerIdAndAthleteId(followerId, athleteId);
+        if (follows.isEmpty()) {
+            throw new EntityNotFoundException("AthleteFollow", athleteId);
+        }
+        followRepository.deleteAll(follows);
     }
 }

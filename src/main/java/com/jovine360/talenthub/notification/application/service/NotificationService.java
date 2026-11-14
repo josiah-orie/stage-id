@@ -48,8 +48,9 @@ public class NotificationService {
         return emailOutboxRepository.save(email);
     }
 
-    public Notification markRead(String notificationId) {
+    public Notification markRead(String notificationId, String userId) {
         Notification n = notificationRepository.findById(notificationId)
+                .filter(x -> x.getRecipientId().equals(userId))
                 .orElseThrow(() -> new EntityNotFoundException("Notification", notificationId));
         n.setRead(true);
         n.setReadAt(Instant.now());

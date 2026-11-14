@@ -28,7 +28,7 @@ public class ActivityConfigController {
 
     @GetMapping("/sports/{id}/activity-types")
     public ResponseEntity<List<ActivityTemplateDto>> getActivityTypesBySport(@PathVariable String id) {
-        // id here is sportCode or sportId — use code-based lookup
-        return ResponseEntity.ok(configService.listActiveTemplates());
+        // {id} may be the sport's id or its code
+        return ResponseEntity.ok(configService.listBySportIdOrCode(id));
     }
 }
